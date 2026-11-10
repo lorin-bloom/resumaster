@@ -1,103 +1,116 @@
-import Image from "next/image";
+"use client";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
+import { api, Badge, CostHint, ErrorNote, Spinner, confirmCost, fitTone } from "@/components/ui";
+
+type Status = { google: { configured: boolean; connected: boolean }; ai: { configured: boolean }; master: { title: string } | null; bank: { accomplishments: number; openDiscrepancies: number } };
+type Dup = { id: number; company: string; job_title: string; revision: number; created_at: string };
+type AppRow = { id: number; company: string; job_title: string; status: string; created_at: string; fit_level: string | null; revision: number };
 
 export default function Home() {
-  return (
-    <div className="font-sans grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20">
-      <main className="flex flex-col gap-[32px] row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="font-mono list-inside list-decimal text-sm/6 text-center sm:text-left">
-          <li className="mb-2 tracking-[-.01em]">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] font-mono font-semibold px-1 py-0.5 rounded">
-              src/app/page.tsx
-            </code>
-            .
-          </li>
-          <li className="tracking-[-.01em]">
-            Save and see your changes instantly.
-          </li>
-        </ol>
+  const router = useRouter();
+  const [jd, setJd] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [dups, setDups] = useState<Dup[] | null>(null);
+  const [status, setStatus] = useState<Status | null>(null);
+  const [recent, setRecent] = useState<AppRow[]>([]);
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:w-auto"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 w-full sm:w-auto md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
+  useEffect(() => {
+    api<Status>("/api/status").then(setStatus).catch(() => {});
+    api<{ applications: AppRow[] }>("/api/applications").then((r) => setRecent(r.applications.slice(0, 6))).catch(() => {});
+  }, []);
+
+  async function submit(force = false) {
+    if (!(await confirmCost("new_application", { label: "Analyzing this role and drafting materials" }))) return;
+    setBusy(true);
+    setError(null);
+    try {
+      const r = await api<{ id?: number; duplicate?: Dup[] }>("/api/applications", { method: "POST", json: { jd, force } });
+      if (r.duplicate) setDups(r.duplicate);
+      else router.push(`/applications/${r.id}?run=1`);
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  const blockers = status
+    ? [
+        !status.ai.configured && "Add ANTHROPIC_API_KEY to .env.local",
+        !status.google.configured && "Add Google OAuth credentials to .env.local",
+        status.google.configured && !status.google.connected && "Connect your Google account",
+        status.google.connected && !status.master && "Choose your master resume",
+      ].filter(Boolean)
+    : [];
+
+  return (
+    <div className="grid gap-6 lg:grid-cols-[1fr_280px]">
+      <section className="space-y-4">
+        <div>
+          <h1 className="text-2xl font-semibold tracking-tight">Paste a job description</h1>
+          <p className="mt-1 text-sm text-muted">Resumaster analyzes the role, maps it to your verified history, recommends resume edits, and drafts answers and outreach.</p>
         </div>
-      </main>
-      <footer className="row-start-3 flex gap-[24px] flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
+        {blockers.length > 0 && (
+          <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+            <b>Before your first run:</b> {blockers.join(" · ")}. <Link href="/setup" className="underline">Open setup</Link>
+          </div>
+        )}
+        <textarea
+          className="input min-h-[420px] font-mono text-[13px] leading-relaxed"
+          placeholder="Paste the complete job description — company, role, responsibilities, qualifications…"
+          value={jd}
+          onChange={(e) => setJd(e.target.value)}
+        />
+        <ErrorNote error={error} />
+        {dups && (
+          <div className="card space-y-3 border-amber-200">
+            <p className="text-sm">
+              You already have {dups.length > 1 ? `${dups.length} runs` : "a run"} for <b>{dups[0].company} — {dups[0].job_title}</b>. Your previous materials are preserved either way.
+            </p>
+            <div className="flex flex-wrap gap-2">
+              <button className="btn-primary" onClick={() => router.push(`/applications/${dups[0].id}`)}>Resume latest (Rev {dups[0].revision})</button>
+              <button className="btn-ghost" onClick={() => submit(true)} disabled={busy}>Create Rev {Math.max(...dups.map((d) => d.revision)) + 1}</button>
+            </div>
+          </div>
+        )}
+        <div className="flex items-center gap-3">
+          <button className="btn-primary" disabled={busy || jd.trim().length < 200} onClick={() => submit(false)}>
+            {busy ? <><Spinner /> Reading the role…</> : "Analyze role & tailor"}
+          </button>
+          <CostHint op="new_application" />
+          <span className="text-xs text-muted">{jd.trim() ? `${jd.trim().split(/\s+/).length} words` : ""}</span>
+        </div>
+      </section>
+      <aside className="space-y-4">
+        <div className="card space-y-2 text-sm">
+          <div className="label">Workspace</div>
+          <div>Master: {status?.master ? <b>{status.master.title}</b> : <span className="text-muted">not set</span>}</div>
+          <div>Career bank: {status?.bank.accomplishments ?? 0} accomplishments</div>
+          {!!status?.bank.openDiscrepancies && (
+            <Link href="/bank" className="block text-amber-800 underline">{status.bank.openDiscrepancies} fact conflict(s) to resolve</Link>
+          )}
+        </div>
+        <div className="card">
+          <div className="label">Recent</div>
+          {recent.length === 0 && <p className="text-sm text-muted">No applications yet.</p>}
+          <ul className="divide-y divide-line">
+            {recent.map((a) => (
+              <li key={a.id} className="py-2">
+                <Link href={`/applications/${a.id}`} className="block text-sm hover:text-accent">
+                  <div className="font-medium">{a.company}</div>
+                  <div className="flex items-center gap-2 text-xs text-muted">
+                    <span className="truncate">{a.job_title}</span>
+                    {a.fit_level && <Badge tone={fitTone(a.fit_level)}>{a.fit_level}</Badge>}
+                  </div>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </div>
+      </aside>
     </div>
   );
 }
