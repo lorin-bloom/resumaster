@@ -5,7 +5,7 @@ import { precomputedResult, runLiveDemo } from "@/lib/demo/run";
 import { DEMO_BANK, DEMO_PREFERENCES, DEMO_RESUME, SAMPLE_JD } from "@/lib/demo/fixtures";
 import { RECIPIENT_GUIDE, type RecipientType } from "@/lib/ai/tasks";
 
-export const maxDuration = 600;
+export const maxDuration = 300;
 export const dynamic = "force-dynamic";
 
 /** Public deployments: live AI only when explicitly enabled (DEMO_LIVE=1). Private/local: allowed. */
