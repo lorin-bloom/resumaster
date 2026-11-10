@@ -1,5 +1,7 @@
 # Resumaster
 
+**Live demo (fictional data):** https://resumaster-lemon.vercel.app
+
 A personal AI career strategist. Paste a job description and get: a recruiter/hiring-manager read of the role, a requirement-to-evidence map against your verified history, restrained resume edits you accept or reject, a new Google Doc per application (your master is never touched), a validated ATS-readable PDF, "why fit" / "why this company" answers, and a LinkedIn note hard-capped at 300 characters. It remembers your writing rules and editorial decisions across applications.
 
 ## Quick start
